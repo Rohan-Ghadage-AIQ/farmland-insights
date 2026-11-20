@@ -8,21 +8,6 @@ set "API_PORT=8010"
 set "UI_PORT=5173"
 set "URL=http://localhost:%UI_PORT%"
 
-rem ---- Clear conflicting GIS environment variables (e.g. from PostgreSQL/PostGIS) ----
-set "PROJ_LIB="
-set "GDAL_DATA="
-set "PROJ_DATA="
-
-rem ---- Auto-detect uv in common Windows install locations if not in PATH ----
-where uv >nul 2>nul
-if errorlevel 1 (
-    if exist "%LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe" (
-        set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe;%PATH%"
-    ) else if exist "%USERPROFILE%\.local\bin\uv.exe" (
-        set "PATH=%USERPROFILE%\.local\bin;%PATH%"
-    )
-)
-
 echo ============================================================
 echo  Farmland Insights - starting backend and frontend
 echo    API : http://127.0.0.1:%API_PORT%   real satellite and weather data, fake sign-in
