@@ -1,0 +1,2 @@
+# Runs from the repository root (the git root is the parent of frontend/).
+cd frontend && pnpm exec lint-staged

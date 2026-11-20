@@ -1,0 +1,39 @@
+name: farmland
+
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    image: farmland-tests:local
+    # Opt-in only: `docker compose --profile test run --rm tests`
+    profiles:
+      - test
+    env_file:
+      - .env
+    volumes:
+      # Mounts the path specified in the .env file to a static location inside the container
+      - ${HOST_GEE_CREDENTIALS_PATH:-./service-account.json}:/app/credentials.json:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    image: farmland-api:local
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mounts the path specified in the .env file to a static location inside the container
+      - ${HOST_GEE_CREDENTIALS_PATH:-./service-account.json}:/app/credentials.json:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true

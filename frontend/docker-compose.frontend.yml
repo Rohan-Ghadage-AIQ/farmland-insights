@@ -1,0 +1,37 @@
+# Adds the frontend as a second service alongside the backend, WITHOUT editing the repo root's
+# docker-compose.yml (Phase 8 constraint). Same project name, so running both files together
+# merges into one Compose project and one default network — `frontend` can then reach `api` by
+# that service name over Docker's own DNS, which is exactly what docker/nginx.conf.template's
+# API_PROXY_TARGET points at.
+#
+# Always run it WITH the root compose file (it depends on that file's own `api` service, so it
+# is not meant to stand alone). From the REPO ROOT (not frontend/):
+#   docker compose -f docker-compose.yml -f frontend/docker-compose.frontend.yml up --build
+#
+# Against a backend that isn't this compose project's own `api` service (already running
+# elsewhere, or a different host/port), override API_PROXY_TARGET and drop `depends_on` with a
+# small third override file rather than editing this one.
+name: farmland
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: farmland-frontend:local
+    ports:
+      - '8080:8080'
+    environment:
+      - API_PROXY_TARGET=http://api:8000
+    depends_on:
+      - api
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true

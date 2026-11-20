@@ -1,0 +1,54 @@
+# Served by nginxinc/nginx-unprivileged (see ../Dockerfile): one static SPA, plus a reverse proxy
+# for /api and /health to the FastAPI backend, since the app calls these as same-origin relative
+# paths (src/api/client.ts) rather than an absolute URL (there is no browser-facing CORS setup to
+# maintain this way, per BACKEND_REQUESTS.md #1).
+#
+# ${API_PROXY_TARGET} is the only placeholder nginx's docker-entrypoint substitutes at container
+# start (NGINX_ENVSUBST_FILTER in the Dockerfile restricts substitution to just this name, so
+# nginx's own $host/$remote_addr/... variables below are left alone).
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml font/woff2;
+
+    # A static SPA served same-origin with no inline scripts/styles beyond what Vite emits.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Liveness only (BACKEND_REQUESTS.md #11): proxied straight through, not nginx's own health.
+    location = /health {
+        proxy_pass ${API_PROXY_TARGET}/health;
+        proxy_set_header Host $host;
+    }
+
+    location /api/ {
+        proxy_pass ${API_PROXY_TARGET}/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # /analyze can take tens of seconds (Earth Engine + weather, API_CONTRACT.md section 7).
+        proxy_read_timeout 190s;
+        proxy_send_timeout 190s;
+    }
+
+    # Hashed filenames (Vite's default): safe to cache for a long time, immutably.
+    location ~* \.(?:js|css|svg|png|jpg|jpeg|woff2?)$ {
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable" always;
+    }
+
+    # The SPA shell: never cached, so a new deploy is picked up on the next load.
+    location / {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}

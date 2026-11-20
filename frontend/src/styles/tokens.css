@@ -1,0 +1,139 @@
+/*
+ * Design tokens (spec 3.6). Every colour, size and radius in the UI comes from here.
+ *
+ * Rules the tests in tokens.test.ts enforce:
+ *  - light is the default; dark is defined twice with identical values (OS preference and the
+ *    manual toggle), so keep the two dark blocks in sync;
+ *  - text pairs are at least 4.5:1 and UI boundaries / marks at least 3:1, in both themes;
+ *  - there is exactly one elevation level (--shadow), used by floating layers only.
+ *
+ * Colour is reserved for data and the one primary action. Status colours (success, warning,
+ * danger) are for system status only, and are never the only signal (icon and text come with them).
+ * Keep variable NAMES stable: globals.css maps them into Tailwind utilities.
+ */
+:root {
+  color-scheme: light;
+
+  /* Neutral surfaces and text */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f4f5f7;
+  --fg: #111827;
+  --fg-muted: #4b5563;
+  /* Decorative dividers only. Control boundaries use --border-strong (3:1 against the surface). */
+  --border: #e1e4ea;
+  --border-strong: #7a8190;
+
+  /* One accent: the primary action, links, selection and the focus ring */
+  --accent: #1d4ed8;
+  --accent-fg: #ffffff;
+  --accent-subtle: #eaf0ff;
+  --ring: #1d4ed8;
+
+  /* Semantic status colours, each with a tinted background for banners and badges */
+  --success: #166534;
+  --success-bg: #e8f6ee;
+  --warning: #92400e;
+  --warning-bg: #fff4e0;
+  --danger: #b91c1c;
+  --danger-bg: #fdecec;
+
+  /* Scrim behind modal layers */
+  --overlay: rgb(17 24 39 / 0.45);
+
+  /* The single elevation level, for popovers, menus, dialogs, drawers and toasts */
+  --shadow: 0 1px 2px rgb(16 24 40 / 0.08), 0 8px 24px rgb(16 24 40 / 0.14);
+
+  /* Spacing: 4px base scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Radius: controls and panels */
+  --radius-control: 6px;
+  --radius-panel: 10px;
+
+  /* Type */
+  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --line-height-xs: 16px;
+  --line-height-sm: 18px;
+  --line-height-base: 20px;
+  --line-height-md: 24px;
+  --line-height-lg: 28px;
+  --line-height-xl: 32px;
+
+  /* Layout */
+  --topbar-height: 56px;
+  --setup-width: 360px;
+  --inspector-width: 380px;
+
+  /* Motion (collapsed to ~0 by the reduced-motion rule in globals.css) */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --bg: #0b1220;
+    --surface: #111a2b;
+    --surface-muted: #172236;
+    --fg: #f3f4f6;
+    --fg-muted: #a3acba;
+    --border: #263248;
+    --border-strong: #6b7a90;
+
+    --accent: #60a5fa;
+    --accent-fg: #0b1220;
+    --accent-subtle: #162a4d;
+    --ring: #60a5fa;
+
+    --success: #4ade80;
+    --success-bg: #0f2a1c;
+    --warning: #fbbf24;
+    --warning-bg: #2d230b;
+    --danger: #f87171;
+    --danger-bg: #341515;
+
+    --overlay: rgb(0 0 0 / 0.6);
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0b1220;
+  --surface: #111a2b;
+  --surface-muted: #172236;
+  --fg: #f3f4f6;
+  --fg-muted: #a3acba;
+  --border: #263248;
+  --border-strong: #6b7a90;
+
+  --accent: #60a5fa;
+  --accent-fg: #0b1220;
+  --accent-subtle: #162a4d;
+  --ring: #60a5fa;
+
+  --success: #4ade80;
+  --success-bg: #0f2a1c;
+  --warning: #fbbf24;
+  --warning-bg: #2d230b;
+  --danger: #f87171;
+  --danger-bg: #341515;
+
+  --overlay: rgb(0 0 0 / 0.6);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.5);
+}

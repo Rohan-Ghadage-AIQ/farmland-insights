@@ -1,0 +1,153 @@
+# Phase 8 CI workflow — a ready-to-copy example, not a live workflow.
+#
+# This repository has no `.github/` directory, and Phase 8's own safety rules say not to create
+# one at the repo root from here (that is the repo owner's call, and a `.github/workflows/*.yml`
+# file would run automatically on every push once merged — not something to switch on silently as
+# a side effect of a frontend task). To enable it: copy this file to
+# `.github/workflows/frontend-ci.yml` at the repo root, as is.
+#
+# What it runs, all inside `frontend/` (the monorepo also has a Python backend with its own CI):
+#   1. typecheck + lint + test + build (`pnpm check`)
+#   2. Playwright e2e (mocked backend, no credentials needed — see tests/e2e)
+#   3. a bundle-size budget: fails the build if the initial JS exceeds the spec's 250 kB gzip
+#      limit (the map chunk is excluded by name, exactly as the spec's own budget is: "keep the
+#      initial JS under about 250 kB gzipped (excluding the map chunk)")
+#
+# No `VITE_*` secrets are needed for any of this: every test and e2e spec runs against MSW or
+# Playwright route interception (see ADR-002), never a real backend or PropelAuth account.
+
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  check:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck, lint, test, build
+        run: pnpm check
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: frontend/coverage
+          retention-days: 14
+
+      - name: Upload production build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: frontend/dist
+          retention-days: 7
+
+  bundle-size:
+    name: Bundle-size budget (250 kB gzip initial JS)
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Check the initial JS against the spec's 250 kB gzip budget
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUDGET_BYTES=256000 # 250 KiB
+          total=0
+          shopt -s nullglob
+          for f in dist/assets/*.js; do
+            base="$(basename "$f")"
+            # The map bundle is deliberately excluded (spec: "excluding the map chunk"): it is
+            # code-split and only loaded once the workspace mounts, never part of first paint.
+            case "$base" in
+              MapView-*|DrawControl-*) continue ;;
+            esac
+            size="$(gzip -c "$f" | wc -c)"
+            echo "  $base: $size bytes gzip"
+            total=$((total + size))
+          done
+          echo "Initial JS total (gzip): $total bytes (budget: $BUDGET_BYTES)"
+          if [ "$total" -gt "$BUDGET_BYTES" ]; then
+            echo "::error::Initial JS bundle ($total bytes gzip) exceeds the 250 kB gzip budget."
+            exit 1
+          fi
+
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e (mocked backend; E2E_LIVE is never set in CI, see ADR-002)
+        run: pnpm e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 14

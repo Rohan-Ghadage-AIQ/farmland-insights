@@ -1,0 +1,1094 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Farmland Insights API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register User",
+        "operationId": "register_user_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Generate Token",
+        "operationId": "generate_token_api_v1_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/whoami": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Whoami",
+        "operationId": "whoami_api_v1_auth_whoami_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoAmIResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/satellite-dates": {
+      "post": {
+        "summary": "Satellite Dates",
+        "description": "List the days in a period on which a satellite photographed the farm.\n\nEach day says whether it has a Sentinel-2 optical image (with how much of the farm was under\ncloud) and/or a Sentinel-1 radar image. Pick one and send it as `image_date` to `/analyze`.",
+        "operationId": "satellite_dates_api_v1_satellite_dates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SatelliteDatesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SatelliteDatesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/analyze": {
+      "post": {
+        "summary": "Analyze Farm",
+        "description": "Analyze a farm boundary and return grid-level crop intelligence.\n\nThis endpoint validates the submitted farm GeoJSON, date range, crop category,\nand grid size, then returns a stateless GeoJSON `FeatureCollection` for GIS\nand frontend clients.\n\n### Processing\n- Dynamically generates square grid cells from the farm boundary using\n  `grid_size`, which defaults to a 50 m grid.\n- Fetches Open-Meteo weather telemetry, Open-Meteo historical climatology,\n  and Google Earth Engine zonal metrics in parallel for the requested date window.\n- Combines the telemetry into grid-cell metrics before calculating CPI scores\n  and threshold-based advisory actions.\n\n### Response\nEach returned grid-cell `Feature` includes:\n- `raw_metrics`: documented raw metrics from Open-Meteo and Google Earth\n  Engine.\n- `cpi_scores`: 5 normalized CPI scores for Structural, Chlorophyll,\n  Water_Drought, Environmental, and Agro_Meteo clusters.\n- `advisories`: human-readable recommended actions keyed by metric.",
+        "operationId": "analyze_farm_api_v1_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FarmAnalysisRequest"
+              },
+              "examples": {
+                "valid_polygon_featurecollection": {
+                  "summary": "Valid farm analysis payload",
+                  "value": {
+                    "farm_geojson": {
+                      "type": "FeatureCollection",
+                      "features": [
+                        {
+                          "type": "Feature",
+                          "id": "farm-1",
+                          "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [
+                              [
+                                [
+                                  77.1,
+                                  28.6
+                                ],
+                                [
+                                  77.11,
+                                  28.6
+                                ],
+                                [
+                                  77.11,
+                                  28.61
+                                ],
+                                [
+                                  77.1,
+                                  28.61
+                                ],
+                                [
+                                  77.1,
+                                  28.6
+                                ]
+                              ]
+                            ]
+                          },
+                          "properties": {}
+                        }
+                      ]
+                    },
+                    "start_date": "2026-04-01",
+                    "end_date": "2026-04-18",
+                    "crop_category": "cereals_c3_temperate",
+                    "grid_size": 50
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthTokenResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in_minutes": {
+            "type": "integer",
+            "title": "Expires In Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "email",
+          "access_token",
+          "expires_in_minutes"
+        ],
+        "title": "AuthTokenResponse"
+      },
+      "CPIScores": {
+        "properties": {
+          "Structural": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Structural"
+          },
+          "Chlorophyll": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Chlorophyll"
+          },
+          "Water_Drought": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Water Drought"
+          },
+          "Environmental": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Environmental"
+          },
+          "Agro_Meteo": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Agro Meteo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "Structural",
+          "Chlorophyll",
+          "Water_Drought",
+          "Environmental",
+          "Agro_Meteo"
+        ],
+        "title": "CPIScores"
+      },
+      "CropCategory": {
+        "type": "string",
+        "enum": [
+          "cereals_c3_temperate",
+          "cereals_c4_tropical",
+          "fruits_orchard",
+          "fruits_tropical",
+          "legumes_cool_season",
+          "legumes_warm_season",
+          "oilseeds_cool",
+          "oilseeds_warm",
+          "tubers_temperate",
+          "tubers_tropical",
+          "vegetables_cool",
+          "vegetables_warm"
+        ],
+        "title": "CropCategory"
+      },
+      "FarmAnalysisRequest": {
+        "properties": {
+          "farm_geojson": {
+            "$ref": "#/components/schemas/FarmFeatureCollection"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          },
+          "image_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Date",
+            "description": "The satellite pass to analyse, chosen from POST /satellite-dates for the same period. Optical indices come from the Sentinel-2 pass on this day (or the nearest clear one) and radar indices from the Sentinel-1 pass on this day (or the nearest one). Omit it to combine every pass in the period (median). Weather always covers the whole period."
+          },
+          "crop_category": {
+            "$ref": "#/components/schemas/CropCategory",
+            "description": "Crop category key or supported crop name. Examples: 'cereals_c3_temperate', 'Wheat', 'Gehu'."
+          },
+          "grid_size": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Grid Size",
+            "default": 50
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "farm_geojson",
+          "start_date",
+          "end_date",
+          "crop_category"
+        ],
+        "title": "FarmAnalysisRequest"
+      },
+      "FarmAnalysisResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/GridAnalysisFeature"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Features"
+          },
+          "imagery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageryInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "features"
+        ],
+        "title": "FarmAnalysisResponse",
+        "examples": [
+          {
+            "features": [
+              {
+                "geometry": {
+                  "coordinates": [
+                    [
+                      [
+                        77.1,
+                        28.6
+                      ],
+                      [
+                        77.10051,
+                        28.6
+                      ],
+                      [
+                        77.10051,
+                        28.60045
+                      ],
+                      [
+                        77.1,
+                        28.60045
+                      ],
+                      [
+                        77.1,
+                        28.6
+                      ]
+                    ]
+                  ],
+                  "type": "Polygon"
+                },
+                "id": 1,
+                "properties": {
+                  "grid_id": 1,
+                  "raw_metrics": {
+                    "et_actual": 4.2,
+                    "evi": 0.42,
+                    "gndvi": 0.58,
+                    "lst": 31.4,
+                    "ndmi": 0.31,
+                    "ndre": 0.46,
+                    "ndvi": 0.64,
+                    "precip": 18.6,
+                    "rh": 62.4,
+                    "rvi": 0.73,
+                    "savi": 0.55,
+                    "soil_moist": 0.34,
+                    "soil_temp": 22.1,
+                    "t2m": 24.8
+                  },
+                  "cpi_scores": {
+                    "Agro_Meteo": 0.61,
+                    "Chlorophyll": 0.64,
+                    "Environmental": 0.69,
+                    "Structural": 0.71,
+                    "Water_Drought": 0.58
+                  },
+                  "advisories": {
+                    "et_actual": "Standard irrigation routine",
+                    "evi": "Check canopy for early rust",
+                    "gndvi": "Maintain current N schedule",
+                    "ndmi": "Check drip system pressure",
+                    "ndre": "No change to N program",
+                    "ndvi": "Routine scout for pests",
+                    "precip": "Monitor water balance weekly",
+                    "rh": "Check airflow in canopy",
+                    "rvi": "Maintain residue cover",
+                    "savi": "Monitor canopy vigor",
+                    "soil_moist": "Monitor soil probes daily",
+                    "soil_temp": "Maintain mulching layers",
+                    "t2m": "Maintain current irrigation"
+                  }
+                },
+                "type": "Feature"
+              }
+            ],
+            "type": "FeatureCollection"
+          }
+        ]
+      },
+      "FarmFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "geometry": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PolygonGeometry"
+              },
+              {
+                "$ref": "#/components/schemas/MultiPolygonGeometry"
+              }
+            ],
+            "title": "Geometry",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "MultiPolygon": "#/components/schemas/MultiPolygonGeometry",
+                "Polygon": "#/components/schemas/PolygonGeometry"
+              }
+            }
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "geometry"
+        ],
+        "title": "FarmFeature"
+      },
+      "FarmFeatureCollection": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FarmFeature"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "features"
+        ],
+        "title": "FarmFeatureCollection"
+      },
+      "GenerateTokenRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "duration_in_minutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration In Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "duration_in_minutes"
+        ],
+        "title": "GenerateTokenRequest"
+      },
+      "GridAnalysisFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "geometry": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PolygonGeometry"
+              },
+              {
+                "$ref": "#/components/schemas/MultiPolygonGeometry"
+              }
+            ],
+            "title": "Geometry",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "MultiPolygon": "#/components/schemas/MultiPolygonGeometry",
+                "Polygon": "#/components/schemas/PolygonGeometry"
+              }
+            }
+          },
+          "properties": {
+            "$ref": "#/components/schemas/GridAnalysisProperties"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "geometry",
+          "properties"
+        ],
+        "title": "GridAnalysisFeature"
+      },
+      "GridAnalysisProperties": {
+        "properties": {
+          "grid_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Grid Id"
+          },
+          "raw_metrics": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Raw Metrics"
+          },
+          "cpi_scores": {
+            "$ref": "#/components/schemas/CPIScores"
+          },
+          "advisories": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Advisories"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "grid_id",
+          "cpi_scores"
+        ],
+        "title": "GridAnalysisProperties"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ImageryInfo": {
+        "properties": {
+          "image_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Date",
+            "description": "The pass the user chose, or null when every pass was combined."
+          },
+          "optical_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Optical Date",
+            "description": "Day of the Sentinel-2 (optical) pass used, or null when none was available or every pass in the period was combined."
+          },
+          "radar_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radar Date",
+            "description": "Day of the Sentinel-1 (radar) pass used, or null when none was available or every pass in the period was combined."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ImageryInfo",
+        "description": "Which satellite passes the per-cell indices actually came from."
+      },
+      "MultiPolygonGeometry": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "MultiPolygon",
+            "title": "Type"
+          },
+          "coordinates": {
+            "items": {
+              "items": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "prefixItems": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ],
+                      "type": "array",
+                      "maxItems": 2,
+                      "minItems": 2
+                    },
+                    {
+                      "prefixItems": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ],
+                      "type": "array",
+                      "maxItems": 3,
+                      "minItems": 3
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Coordinates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "MultiPolygonGeometry"
+      },
+      "PolygonGeometry": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Polygon",
+            "title": "Type"
+          },
+          "coordinates": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "prefixItems": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "type": "array",
+                    "maxItems": 2,
+                    "minItems": 2
+                  },
+                  {
+                    "prefixItems": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "type": "array",
+                    "maxItems": 3,
+                    "minItems": 3
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Coordinates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "PolygonGeometry"
+      },
+      "RegisterUserRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Password"
+          },
+          "duration_in_minutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration In Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "duration_in_minutes"
+        ],
+        "title": "RegisterUserRequest"
+      },
+      "SatelliteDatesRequest": {
+        "properties": {
+          "farm_geojson": {
+            "$ref": "#/components/schemas/FarmFeatureCollection"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "farm_geojson",
+          "start_date",
+          "end_date"
+        ],
+        "title": "SatelliteDatesRequest",
+        "description": "Which days a satellite photographed the farm within a period."
+      },
+      "SatelliteDatesResponse": {
+        "properties": {
+          "dates": {
+            "items": {
+              "$ref": "#/components/schemas/SatellitePass"
+            },
+            "type": "array",
+            "title": "Dates",
+            "description": "Newest first."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SatelliteDatesResponse"
+      },
+      "SatellitePass": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "optical": {
+            "type": "boolean",
+            "title": "Optical",
+            "description": "A Sentinel-2 (optical) image exists for this day."
+          },
+          "cloud_cover": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cloud Cover",
+            "description": "Percent of the farm under cloud or cloud shadow in the optical image (the whole satellite scene when the provider cannot measure the farm alone). Null when there is no optical image or it could not be measured."
+          },
+          "radar": {
+            "type": "boolean",
+            "title": "Radar",
+            "description": "A Sentinel-1 (radar) image exists for this day. Radar sees through cloud."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "optical",
+          "radar"
+        ],
+        "title": "SatellitePass",
+        "description": "One day on which a satellite photographed the farm."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WhoAmIResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "active_org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Org Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "WhoAmIResponse"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

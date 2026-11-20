@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "id_4",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"xy_coordinate_resolution": 1e-15,
+"features": [
+{"type":"Feature","properties":{"id":4,"Name of cr":"wheat","sowing dat":"2026-11-07","serial no":4},"geometry":{"type":"MultiPolygon","coordinates":[[[[76.972697230242417,19.942285304876741],[76.973548647896195,19.942162643708553],[76.973499715847126,19.941797726169831],[76.972635249646913,19.941880522660135],[76.972645036056733,19.942116645745912],[76.972697230242417,19.942285304876741]]]]}}
+]
+}

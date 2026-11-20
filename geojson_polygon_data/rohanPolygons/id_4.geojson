@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "id_4",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"xy_coordinate_resolution": 1e-15,
+"features": [
+{"type":"Feature","properties":{"id":4,"Name of cr":"sugarcane","sowing dat":"2026-03-03","serial no":4},"geometry":{"type":"MultiPolygon","coordinates":[[[[74.510817989612917,17.488285118655693],[74.511854731441261,17.488287668600552],[74.511856555850144,17.488241930972023],[74.511744448109539,17.488148537628845],[74.51078600282186,17.48815108087328],[74.510817989612917,17.488285118655693]]]]}}
+]
+}

@@ -1,0 +1,131 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Expose the CSS-variable tokens as Tailwind utilities (bg-surface, text-fg-muted, rounded-control...). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-overlay: var(--overlay);
+
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+  --font-sans: var(--font-sans);
+  --shadow-float: var(--shadow);
+
+  --text-xs: var(--font-size-xs);
+  --text-xs--line-height: var(--line-height-xs);
+  --text-sm: var(--font-size-sm);
+  --text-sm--line-height: var(--line-height-sm);
+  --text-base: var(--font-size-base);
+  --text-base--line-height: var(--line-height-base);
+  --text-md: var(--font-size-md);
+  --text-md--line-height: var(--line-height-md);
+  --text-lg: var(--font-size-lg);
+  --text-lg--line-height: var(--line-height-lg);
+  --text-xl: var(--font-size-xl);
+  --text-xl--line-height: var(--line-height-xl);
+}
+
+html {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  /* Numbers line up in columns and don't jitter while values change. */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One visible focus ring for every interactive element; never removed without a replacement. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-subtle);
+}
+
+/* Component animations. Kept here so the reduced-motion rule below covers all of them. */
+@keyframes fi-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes fi-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fi-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fi-slide-in-right {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.fi-skeleton {
+  animation: fi-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.fi-spinner {
+  animation: fi-spin 0.8s linear infinite;
+}
+
+.fi-fade-in {
+  animation: fi-fade-in var(--duration-base) ease-out;
+}
+
+.fi-slide-in {
+  animation: fi-slide-in-right var(--duration-base) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

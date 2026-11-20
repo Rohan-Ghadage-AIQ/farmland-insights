@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "id_1",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"xy_coordinate_resolution": 1e-15,
+"features": [
+{"type":"Feature","properties":{"id":1,"Name of cr":"toor","sowing dat":"2025-07-07","serial no":1},"geometry":{"type":"MultiPolygon","coordinates":[[[[76.972691392935246,19.943113898760942],[76.973862698031866,19.942971489793532],[76.973836833250559,19.942249022809609],[76.972665528153939,19.942377538812874],[76.972691392935246,19.943113898760942]]]]}}
+]
+}

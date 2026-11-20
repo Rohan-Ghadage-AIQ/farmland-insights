@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "id_2",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"xy_coordinate_resolution": 1e-15,
+"features": [
+{"type":"Feature","properties":{"id":2,"Name of cr":"sorghum","sowing dat":"2026-09-06","serial no":2},"geometry":{"type":"MultiPolygon","coordinates":[[[[76.9739495143792,19.943322847488457],[76.974828916943835,19.943128337904596],[76.974747627631146,19.942871307015576],[76.975021055319303,19.942787945556312],[76.974895426381508,19.94209326501776],[76.97385344519148,19.942246094998442],[76.9739495143792,19.943322847488457]]]]}}
+]
+}

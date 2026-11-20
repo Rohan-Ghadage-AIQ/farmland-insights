@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "id_5",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"xy_coordinate_resolution": 1e-15,
+"features": [
+{"type":"Feature","properties":{"id":5,"Name of cr":"maize","sowing dat":"2026-10-15","serial no":5},"geometry":{"type":"MultiPolygon","coordinates":[[[[74.51229667889767,17.489116268652019],[74.512434218833278,17.489125406886501],[74.512428354851664,17.48788450174192],[74.512278517695378,17.487901735268604],[74.51229667889767,17.489116268652019]]]]}}
+]
+}

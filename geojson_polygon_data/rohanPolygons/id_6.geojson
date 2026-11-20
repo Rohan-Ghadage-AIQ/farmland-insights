@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "id_6",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"xy_coordinate_resolution": 1e-15,
+"features": [
+{"type":"Feature","properties":{"id":6,"Name of cr":"soyabean","sowing dat":"2026-10-14","serial no":6},"geometry":{"type":"MultiPolygon","coordinates":[[[[76.971341028140188,19.944020277757513],[76.972573020784452,19.943871745264815],[76.972585227845741,19.942358942432229],[76.971117746987346,19.942515951396633],[76.970788952117005,19.943000371474881],[76.970798571210423,19.943275828350551],[76.971341028140188,19.944020277757513]]]]}}
+]
+}
