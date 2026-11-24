@@ -63,7 +63,9 @@ DEFAULT_CLOUD_COVER_MAX = 30
 DEFAULT_ROLLBACK_DAYS = 3
 SENTINEL1_FIRST_ACQUISITION = date(2014, 10, 3)
 
-OPTICAL_INDEX_BANDS: tuple[str, ...] = ("ndvi", "evi", "savi", "gndvi", "ndre", "ndmi", "ndwi")
+OPTICAL_INDEX_BANDS: tuple[str, ...] = (
+    "ndvi", "evi", "savi", "gndvi", "ndre", "ndmi", "ndwi", "ndwi_farmonaut",
+)
 SAR_INDEX_BANDS: tuple[str, ...] = ("rvi", "dprvi", "dpsvi", "rfdi", "csi")
 LANDSAT_LST_BANDS: tuple[str, ...] = ("lst",)
 # Sentinel-2 Scene Classification classes that are not a clear view of the ground: cloud shadow,
@@ -88,7 +90,9 @@ def _use_bundled_proj_data() -> None:
         value = os.environ.get(name)
         if value and prefix not in Path(value).resolve().parents:
             logger.info("stac_ignoring_external_proj_data", extra={"variable": name, "path": value})
-            del os.environ[name]
+            # Optical and radar scenes are read in parallel threads that both get here; the one that
+            # comes second must not fail because the first already removed the variable.
+            os.environ.pop(name, None)
 
 
 def _lazy_import_rasterio():
@@ -361,6 +365,49 @@ def _zonal_means(
 # Sentinel-2 optical indices
 # ---------------------------------------------------------------------------
 
+# Which Sentinel-2 L2A asset feeds each colour, with the label and centre wavelength (µm) ESA gives
+# that band. The labels are checked against each image's own metadata before any index is computed.
+SENTINEL2_BAND_MAP = {
+    "nir": "B08", "red": "B04", "green": "B03",
+    "blue": "B02", "rededge1": "B05", "swir16": "B11", "swir22": "B12",
+}
+SENTINEL2_BAND_LABELS = {
+    "B02": ("blue", 0.490), "B03": ("green", 0.560), "B04": ("red", 0.665),
+    "B05": ("rededge", 0.705), "B08": ("nir", 0.842), "B11": ("swir16", 1.610),
+    "B12": ("swir22", 2.190),
+}
+
+
+class BandMappingError(ValueError):
+    """An image's band metadata does not match the band the code reads for that colour."""
+
+
+def check_sentinel2_band_labels(item: Any) -> None:
+    """
+    Fail if a Sentinel-2 asset is not the band we think it is.
+
+    Checks the asset's ``eo:bands`` label and centre wavelength, and that the file name carries the
+    band code (``..._B04_10m.tif``). Assets without metadata are only checked by file name.
+    """
+    for band in SENTINEL2_BAND_MAP.values():
+        asset = item.assets[band]
+        expected_name, expected_wavelength = SENTINEL2_BAND_LABELS[band]
+        file_name = asset.href.split("?", 1)[0].rsplit("/", 1)[-1]
+        if f"_{band}_" not in file_name:
+            raise BandMappingError(f"{band} asset points at {file_name}, not a {band} file")
+        for info in (getattr(asset, "extra_fields", None) or {}).get("eo:bands") or []:
+            name = info.get("name")
+            common = info.get("common_name")
+            wavelength = info.get("center_wavelength")
+            if name not in (None, band):
+                raise BandMappingError(f"{band} asset is labelled {name}")
+            if common not in (None, expected_name):
+                raise BandMappingError(f"{band} should be {expected_name} but is labelled {common}")
+            if wavelength is not None and abs(float(wavelength) - expected_wavelength) > 0.02:
+                raise BandMappingError(
+                    f"{band} should be at {expected_wavelength} µm but is at {wavelength} µm"
+                )
+
 def _compute_optical_indices_numpy(
     nir: np.ndarray,
     red: np.ndarray,
@@ -368,9 +415,10 @@ def _compute_optical_indices_numpy(
     blue: np.ndarray,
     red_edge: np.ndarray,
     swir: np.ndarray,
+    swir22: np.ndarray,
 ) -> dict[str, np.ndarray]:
     """
-    Compute the same 7 optical indices as gee_service._compute_optical_indices.
+    Compute the same 8 optical indices as gee_service._compute_optical_indices.
 
     All inputs are float32 arrays of the same shape (surface reflectance
     scaled 0–10 000 or 0–1 depending on the product).
@@ -387,11 +435,14 @@ def _compute_optical_indices_numpy(
         gndvi = (nir - green) / (nir + green + eps)
         ndre = (nir - red_edge) / (nir + red_edge + eps)
         ndmi = (nir - swir) / (nir + swir + eps)
-        ndwi = (green - nir) / (green + nir + eps)
+        ndwi = (green - nir) / (green + nir + eps)  # McFeeters: open / standing water
+        # The NDWI Farmonaut reports: water held in the crop, from NIR and the 2.2 µm SWIR band.
+        ndwi_farmonaut = (nir - swir22) / (nir + swir22 + eps)
 
     return {
         "ndvi": ndvi, "evi": evi, "savi": savi,
         "gndvi": gndvi, "ndre": ndre, "ndmi": ndmi, "ndwi": ndwi,
+        "ndwi_farmonaut": ndwi_farmonaut,
     }
 
 
@@ -509,23 +560,18 @@ def _optical_scene_metrics(
 ) -> GridMetrics:
     """Sentinel-2 indices for one scene, reduced to per-grid-cell means."""
     assets = item.assets
+    check_sentinel2_band_labels(item)
 
-    # S2 L2A band mapping on Planetary Computer
-    band_map = {
-        "nir": "B08", "red": "B04", "green": "B03",
-        "blue": "B02", "rededge1": "B05", "swir16": "B11",
-    }
-
-    # B08, B04, B03, B02 are 10 m; B05 and B11 are 20 m and get resampled onto the 10 m grid.
-    hrefs = {name: assets[band].href for name, band in band_map.items()}
+    # B08, B04, B03, B02 are 10 m; B05, B11 and B12 are 20 m and get resampled onto the 10 m grid.
+    hrefs = {name: assets[band].href for name, band in SENTINEL2_BAND_MAP.items()}
     read = _read_bands(
-        hrefs, aoi_bounds, native=["nir", "red", "green", "blue"], resampled=["rededge1", "swir16"]
+        hrefs, aoi_bounds, native=["nir", "red", "green", "blue"], resampled=["rededge1", "swir16", "swir22"]
     )
     if read is None:
         return {}
     arrays, ref_tf, ref_crs, target_shape = read
     nir, red, green, blue = arrays["nir"], arrays["red"], arrays["green"], arrays["blue"]
-    red_edge, swir = arrays["rededge1"], arrays["swir16"]
+    red_edge, swir, swir22 = arrays["rededge1"], arrays["swir16"], arrays["swir22"]
 
     # Baseline >= 04.00 adds a -1000 DN offset to surface reflectance.
     baseline = str(item.properties.get("s2:processing_baseline", "0"))
@@ -533,11 +579,11 @@ def _optical_scene_metrics(
         dn_offset = -1000.0 if float(baseline) >= 4.0 else 0.0
     except ValueError:
         dn_offset = 0.0
-    nir, red, green, blue, red_edge, swir = (
-        (arr + dn_offset) / 10000.0 for arr in (nir, red, green, blue, red_edge, swir)
+    nir, red, green, blue, red_edge, swir, swir22 = (
+        (arr + dn_offset) / 10000.0 for arr in (nir, red, green, blue, red_edge, swir, swir22)
     )
 
-    index_arrays = _compute_optical_indices_numpy(nir, red, green, blue, red_edge, swir)
+    index_arrays = _compute_optical_indices_numpy(nir, red, green, blue, red_edge, swir, swir22)
 
     # Drop cloud, cirrus and cloud-shadow pixels, as the Earth Engine path does. A report is built
     # from one chosen pass, so an unmasked cloud would read as a field of failing crop.

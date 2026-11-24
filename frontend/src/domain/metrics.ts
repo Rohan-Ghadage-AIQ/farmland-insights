@@ -152,6 +152,16 @@ const SPECS = {
     unit: null,
     kind: 'measured',
     scope: 'cell',
+    note: '(Green − NIR) / (Green + NIR): standing water on the surface.',
+  },
+  ndwi_farmonaut: {
+    label: 'Farmonaut NDWI',
+    fullName: 'Normalized Difference Water Index, as Farmonaut reports it',
+    cluster: 'Water_Drought',
+    unit: null,
+    kind: 'measured',
+    scope: 'cell',
+    note: '(NIR − SWIR2) / (NIR + SWIR2), Sentinel-2 B8 and B12: water held in the crop.',
   },
   rsm: {
     label: 'RSM',

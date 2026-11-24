@@ -56,6 +56,7 @@ const METRIC_RANGES: Record<MetricKey, readonly [number, number]> = {
   ndre: [0, 0.6],
   ndmi: [-0.2, 0.6],
   ndwi: [-0.6, 0.2],
+  ndwi_farmonaut: [0.0, 0.6],
   rsm: [0, 1],
   swdi: [-5, 5],
   cmi: [-50, 100],

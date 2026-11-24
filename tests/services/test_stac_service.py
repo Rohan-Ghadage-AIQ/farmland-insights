@@ -23,8 +23,9 @@ def test_optical_indices_match_gee_formulas():
     blue = np.array([[0.05]], dtype=np.float32)
     red_edge = np.array([[0.3]], dtype=np.float32)
     swir = np.array([[0.25]], dtype=np.float32)
+    swir22 = np.array([[0.15]], dtype=np.float32)
 
-    out = stac._compute_optical_indices_numpy(nir, red, green, blue, red_edge, swir)
+    out = stac._compute_optical_indices_numpy(nir, red, green, blue, red_edge, swir, swir22)
 
     assert out["ndvi"][0, 0] == pytest.approx((0.5 - 0.1) / (0.5 + 0.1), rel=1e-4)
     assert out["evi"][0, 0] == pytest.approx(2.5 * 0.4 / (0.5 + 0.6 - 0.375 + 1), rel=1e-4)
@@ -33,6 +34,7 @@ def test_optical_indices_match_gee_formulas():
     assert out["ndre"][0, 0] == pytest.approx(0.2 / 0.8, rel=1e-4)
     assert out["ndmi"][0, 0] == pytest.approx(0.25 / 0.75, rel=1e-4)
     assert out["ndwi"][0, 0] == pytest.approx((0.2 - 0.5) / (0.2 + 0.5), rel=1e-4)
+    assert out["ndwi_farmonaut"][0, 0] == pytest.approx((0.5 - 0.15) / (0.5 + 0.15), rel=1e-4)
 
 
 def test_sar_indices_match_gee_formulas():
@@ -338,7 +340,10 @@ def test_cloud_and_shadow_pixels_are_dropped_from_a_scene(monkeypatch):
     transform = from_origin(0, 2, 1, 1)
     bright = np.full((2, 4), 4000.0, dtype=np.float32)  # reflectance 0.4 everywhere
     dark = np.full((2, 4), 1000.0, dtype=np.float32)
-    arrays = {"nir": bright, "red": dark, "green": dark, "blue": dark, "rededge1": dark, "swir16": dark}
+    arrays = {
+        "nir": bright, "red": dark, "green": dark, "blue": dark,
+        "rededge1": dark, "swir16": dark, "swir22": dark,
+    }
     monkeypatch.setattr(stac, "_read_bands", lambda *a, **k: (arrays, transform, "EPSG:3857", (2, 4)))
     # Cell 2 (right half) is high-probability cloud (SCL 9); cell 1 is vegetation (SCL 4).
     scl = np.array([[4, 4, 9, 9], [4, 4, 9, 9]], dtype=np.float32)
@@ -350,15 +355,15 @@ def test_cloud_and_shadow_pixels_are_dropped_from_a_scene(monkeypatch):
 
     monkeypatch.setattr(stac, "_read_band_clipped", read_scl)
     asset = types.SimpleNamespace
-    names = ("B08", "B04", "B03", "B02", "B05", "B11", "SCL")
+    names = ("B08", "B04", "B03", "B02", "B05", "B11", "B12", "SCL")
     item = types.SimpleNamespace(
-        assets={name: asset(href=name) for name in names},
+        assets={name: asset(href=f"T43QDV_{name}_10m.tif") for name in names},
         properties={"s2:processing_baseline": "03.00"},
     )
 
     metrics = stac._optical_scene_metrics(item, (0, 0, 1, 1), grid, [1, 2])
 
-    assert reads == [("SCL", (2, 4), True)]  # class codes are never blended by resampling
+    assert reads == [("T43QDV_SCL_10m.tif", (2, 4), True)]  # class codes are never blended
     assert set(metrics) == {1}
     assert metrics[1]["ndvi"] == pytest.approx((0.4 - 0.1) / (0.4 + 0.1), abs=1e-4)
 
@@ -372,3 +377,54 @@ def test_a_proj_database_from_another_install_is_ignored(monkeypatch, tmp_path):
 
     assert "PROJ_LIB" not in os.environ
     assert os.environ["PROJ_DATA"] == inside
+
+
+def _labelled_item(**overrides):
+    """A Sentinel-2 item whose assets carry ESA's real labels, with some replaced by ``overrides``."""
+    real = {
+        "B02": ("blue", 0.49), "B03": ("green", 0.56), "B04": ("red", 0.665),
+        "B05": ("rededge", 0.704), "B08": ("nir", 0.842), "B11": ("swir16", 1.61),
+        "B12": ("swir22", 2.19),
+    }
+    assets = {}
+    for band, (common, wavelength) in real.items():
+        name, common, wavelength, file_band = overrides.get(band, (band, common, wavelength, band))
+        assets[band] = types.SimpleNamespace(
+            href=f"https://x/T43QDV_20261114T053059_{file_band}_10m.tif?sig=1",
+            extra_fields={"eo:bands": [{"name": name, "common_name": common, "center_wavelength": wavelength}]},
+        )
+    return types.SimpleNamespace(assets=assets)
+
+
+def test_every_colour_reads_its_own_sentinel_band():
+    assert stac.SENTINEL2_BAND_MAP == {
+        "blue": "B02", "green": "B03", "red": "B04",
+        "rededge1": "B05", "nir": "B08", "swir16": "B11", "swir22": "B12",
+    }
+    stac.check_sentinel2_band_labels(_labelled_item())  # real metadata passes
+
+
+@pytest.mark.parametrize(
+    "override, message",
+    [
+        ({"B04": ("B04", "green", 0.56, "B04")}, "B04 should be red but is labelled green"),
+        ({"B03": ("B03", "green", 0.665, "B03")}, "B03 should be at 0.56"),
+        ({"B02": ("B03", "blue", 0.49, "B02")}, "B02 asset is labelled B03"),
+        ({"B08": ("B08", "nir", 0.842, "B04")}, "B08 asset points at"),
+    ],
+)
+def test_a_swapped_band_is_refused(override, message):
+    with pytest.raises(stac.BandMappingError, match=message):
+        stac.check_sentinel2_band_labels(_labelled_item(**override))
+
+
+def test_removing_an_external_proj_database_twice_is_harmless(monkeypatch, tmp_path):
+    # Optical and radar reads run in parallel and both clear the variable; the second must not fail.
+    monkeypatch.setenv("PROJ_LIB", str(tmp_path / "postgis" / "proj"))
+    real_get = os.environ.get
+    monkeypatch.setattr(os.environ, "get", lambda name, default=None: str(tmp_path) if name == "PROJ_LIB" else real_get(name, default))
+    os.environ.pop("PROJ_LIB")
+
+    stac._use_bundled_proj_data()  # sees the variable, but another thread already removed it
+
+    assert "PROJ_LIB" not in os.environ

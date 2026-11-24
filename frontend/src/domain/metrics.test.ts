@@ -18,6 +18,7 @@ const CONTRACT_CLUSTERS = {
   Water_Drought: [
     'ndmi',
     'ndwi',
+    'ndwi_farmonaut',
     'rsm',
     'swdi',
     'cmi',
@@ -70,8 +71,8 @@ describe('clusters', () => {
 });
 
 describe('metric dictionary', () => {
-  it('has 33 metrics, including lst, ndwi and rsm, each in exactly one cluster', () => {
-    expect(METRIC_KEYS).toHaveLength(33);
+  it('has 34 metrics, including lst, ndwi and rsm, each in exactly one cluster', () => {
+    expect(METRIC_KEYS).toHaveLength(34);
     expect(isMetricKey('lst')).toBe(true);
     const seen = new Set<string>();
     for (const key of METRIC_KEYS) {
@@ -128,6 +129,7 @@ describe('metric dictionary', () => {
       ndre: null,
       ndmi: null,
       ndwi: null,
+      ndwi_farmonaut: null,
       rsm: null,
       rvi: null,
       dprvi: null,

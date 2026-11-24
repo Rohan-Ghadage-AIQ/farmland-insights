@@ -34,7 +34,9 @@ PYLANDTEMP_THERMAL_WAVELENGTH_METERS = 0.0000115
 PYLANDTEMP_PLANCK_RHO = 14380
 PYLANDTEMP_MAX_EARTH_TEMP_KELVIN = 273.15 + 56.7
 
-OPTICAL_INDEX_BANDS: tuple[str, ...] = ("ndvi", "evi", "savi", "gndvi", "ndre", "ndmi", "ndwi")
+OPTICAL_INDEX_BANDS: tuple[str, ...] = (
+    "ndvi", "evi", "savi", "gndvi", "ndre", "ndmi", "ndwi", "ndwi_farmonaut",
+)
 SAR_INDEX_BANDS: tuple[str, ...] = ("rvi", "dprvi", "dpsvi", "rfdi", "csi", "rsm")
 SENTINEL2_COLLECTION = "COPERNICUS/S2_SR_HARMONIZED"
 # Sentinel-2 L2A surface reflectance is stored as integers scaled by 10 000.
@@ -276,9 +278,10 @@ def _compute_optical_indices(ee_module: Any, image: Any):
         evi:   Enhanced Vegetation Index (B8, B4, B2)
         savi:  Soil-Adjusted Vegetation Index (B8, B4)
         gndvi: Green NDVI (B8, B3)
-        ndre:  Normalized Difference Red Edge (B8A, B5)
+        ndre:  Normalized Difference Red Edge (B8, B5)
         ndmi:  Normalized Difference Moisture Index (B8, B11)
         ndwi:  Normalized Difference Water Index, McFeeters (B3, B8)
+        ndwi_farmonaut:  NDWI as Farmonaut reports it, crop water (B8, B12)
 
     Bands are converted to 0-1 reflectance first (EVI's constants assume it), and pixels the
     Scene Classification marks as cloud, cloud shadow or cirrus are masked out.
@@ -289,7 +292,7 @@ def _compute_optical_indices(ee_module: Any, image: Any):
     for scl_class in SENTINEL2_CLOUD_SCL_CLASSES[1:]:
         clear = clear.And(scl.neq(scl_class))
     image = image.updateMask(clear)
-    reflectance = image.select(["B2", "B3", "B4", "B5", "B8", "B8A", "B11"]).divide(
+    reflectance = image.select(["B2", "B3", "B4", "B5", "B8", "B8A", "B11", "B12"]).divide(
         SENTINEL2_REFLECTANCE_SCALE
     )
 
@@ -299,6 +302,7 @@ def _compute_optical_indices(ee_module: Any, image: Any):
     blue = reflectance.select("B2")
     red_edge = reflectance.select("B5")
     swir = reflectance.select("B11")
+    swir22 = reflectance.select("B12")
 
     ndvi = nir.subtract(red).divide(nir.add(red)).rename("ndvi")
     evi = (
@@ -312,8 +316,9 @@ def _compute_optical_indices(ee_module: Any, image: Any):
     ndre = nir.subtract(red_edge).divide(nir.add(red_edge)).rename("ndre")
     ndmi = nir.subtract(swir).divide(nir.add(swir)).rename("ndmi")
     ndwi = green.subtract(nir).divide(green.add(nir)).rename("ndwi")
+    ndwi_farmonaut = nir.subtract(swir22).divide(nir.add(swir22)).rename("ndwi_farmonaut")
 
-    return image.addBands([ndvi, evi, savi, gndvi, ndre, ndmi, ndwi])
+    return image.addBands([ndvi, evi, savi, gndvi, ndre, ndmi, ndwi, ndwi_farmonaut])
 
 
 def _compute_sar_indices(ee_module: Any, image: Any):

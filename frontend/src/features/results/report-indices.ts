@@ -141,6 +141,20 @@ const NDWI: ReportIndex = {
   bands: { domain: [-1, 1], cuts: [-0.3, 0], higherIsBetter: false },
 };
 
+const FARMONAUT_NDWI: ReportIndex = {
+  key: 'ndwi_farmonaut',
+  short: 'Farmonaut NDWI',
+  name: 'Normalized Difference Water Index, crop water',
+  tagline: 'Water in the crop',
+  hint: 'Higher is wetter; the NDWI Farmonaut reports',
+  sensor: 'optical',
+  about:
+    'Water held in the crop canopy, computed the way Farmonaut computes its NDWI so the two reports can be compared directly. Red areas hold less water than the rest of the field. This is a different index from the NDWI above, which looks for standing water.',
+  background:
+    'Farmonaut NDWI = (NIR − SWIR2) / (NIR + SWIR2), from Sentinel-2 bands B8 (842 nm) and B12 (2190 nm). Leaf water absorbs the short-wave infrared, so wetter crops read higher. B12 is a 20 m band, resampled onto the 10 m grid.',
+  bands: { domain: UNIT, cuts: [0.4, 0.7], higherIsBetter: true },
+};
+
 const NDMI: ReportIndex = {
   key: 'ndmi',
   short: 'NDMI',
@@ -177,8 +191,8 @@ export const REPORT_INDEX_GROUPS: readonly ReportIndexGroup[] = [
   },
   {
     id: 'irrigation',
-    title: 'Irrigation (NDWI, NDMI, Evapotranspiration)',
-    indices: [NDWI, NDMI, ET],
+    title: 'Irrigation (NDWI, Farmonaut NDWI, NDMI, Evapotranspiration)',
+    indices: [NDWI, FARMONAUT_NDWI, NDMI, ET],
   },
 ];
 

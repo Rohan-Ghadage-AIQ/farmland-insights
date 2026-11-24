@@ -160,8 +160,9 @@ describe('buildHtmlReport structure', () => {
       'RSM (Radar Soil Moisture)',
       'Crop Health (NDVI, EVI, SAVI, NDRE)',
       'NDRE (Normalized Difference Red Edge)',
-      'Irrigation (NDWI, NDMI, Evapotranspiration)',
+      'Irrigation (NDWI, Farmonaut NDWI, NDMI, Evapotranspiration)',
       'NDWI (Normalized Difference Water Index)',
+      'Farmonaut NDWI (Normalized Difference Water Index, crop water)',
       'NDMI (Normalized Difference Moisture Index)',
       '>Evapotranspiration<',
     ]) {
@@ -181,6 +182,7 @@ describe('buildHtmlReport structure', () => {
       'index-savi',
       'index-ndre',
       'index-ndwi',
+      'index-ndwi-farmonaut',
       'index-ndmi',
       'index-et-actual',
       'actions',
@@ -190,7 +192,7 @@ describe('buildHtmlReport structure', () => {
     // The contents row for NDVI and the NDVI page's own number agree.
     expect(pageOf(FULL, 'cover')).toMatch(/href="#index-ndvi">NDVI[^<]*<\/a><\/td><td>5<\/td>/);
     expect(pageOf(FULL, 'index-ndvi')).toContain('<span class="pno">05</span>');
-    expect(pageOf(FULL, 'cells')).toContain('<span class="pno">14</span>');
+    expect(pageOf(FULL, 'cells')).toContain('<span class="pno">15</span>');
   });
 
   it('keeps the how-to-read guide on the summary page', () => {

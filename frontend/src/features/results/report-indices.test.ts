@@ -37,7 +37,10 @@ describe('report index bands', () => {
     expect(REPORT_INDEX_GROUPS.map((g) => [g.title, g.indices.map((i) => i.key)])).toEqual([
       ['Radar (RVI, RSM)', ['rvi', 'rsm']],
       ['Crop Health (NDVI, EVI, SAVI, NDRE)', ['ndvi', 'evi', 'savi', 'ndre']],
-      ['Irrigation (NDWI, NDMI, Evapotranspiration)', ['ndwi', 'ndmi', 'et_actual']],
+      [
+        'Irrigation (NDWI, Farmonaut NDWI, NDMI, Evapotranspiration)',
+        ['ndwi', 'ndwi_farmonaut', 'ndmi', 'et_actual'],
+      ],
     ]);
   });
 });

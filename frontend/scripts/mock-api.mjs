@@ -103,6 +103,7 @@ function analyze(body) {
             ndre: round(ndvi * 0.5),
             ndmi: round(soil * 1.5),
             ndwi: round(-0.2 - ndvi * 0.5),
+            ndwi_farmonaut: round(0.1 + ndvi * 0.4),
             rvi: round(0.3 + 0.5 * field(x, y, 3)),
             rsm: round(field(x, y, 5)),
             et_actual: 0.17,
